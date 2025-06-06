@@ -4,42 +4,150 @@
   <meta charset="UTF-8">
   <title>AR Gatitos + Modelo 3D</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  
   <!-- Librerías necesarias -->
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
+  
   <style>
-    body, html { margin: 0; padding: 0; overflow: hidden; }
-    #ar-scene { width: 100vw; height: 100vh; position: fixed; top: 0; left: 0; }
+    body, html { 
+      margin: 0; 
+      padding: 0; 
+      overflow: hidden; 
+      font-family: Arial, sans-serif;
+    }
+    
+    #ar-scene { 
+      width: 100vw; 
+      height: 100vh; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+    }
+    
+    /* Indicador de carga */
+    #loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 1000;
+      text-align: center;
+    }
+    
+    /* Ocultar por defecto */
+    .hidden {
+      display: none;
+    }
+    
+    /* Instrucciones */
+    #instructions {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 15px;
+      border-radius: 5px;
+      max-width: 300px;
+      font-size: 14px;
+      z-index: 999;
+    }
   </style>
 </head>
 <body>
+  <!-- Indicador de carga -->
+  <div id="loading">
+    <div>Cargando AR...</div>
+    <div style="margin-top: 10px;">Apunta la cámara hacia la imagen objetivo</div>
+  </div>
+  
+  <!-- Instrucciones -->
+  <div id="instructions" class="hidden">
+    <strong>Instrucciones:</strong><br>
+    • Apunta la cámara hacia la imagen objetivo<br>
+    • Mantén estable el dispositivo<br>
+    • Asegúrate de tener buena iluminación
+  </div>
+
   <a-scene
     id="ar-scene"
-    mindar-image="imageTargetSrc: targets.mind; autoStart: true; filterMinCF:0.001;"
+    mindar-image="imageTargetSrc: targets.mind; autoStart: true; filterMinCF:0.001; filterBeta: 0.01;"
     vr-mode-ui="enabled: false"
     embedded
     device-orientation-permission-ui="enabled: true"
-    renderer="colorManagement: true, physicallyCorrectLights"
+    renderer="colorManagement: true, physicallyCorrectLights: true"
+    loading-screen="enabled: false"
   >
-    <!-- Cámara -->
-    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-    <!-- Carga de modelo 3D -->
+    <!-- Cámara con configuración mejorada -->
+    <a-camera 
+      position="0 0 0" 
+      look-controls="enabled: false"
+      wasd-controls="enabled: false"
+    ></a-camera>
+    
+    <!-- Assets con gestión de errores -->
     <a-assets>
-      <a-asset-item id="modelo3d" src="modelo.glb"></a-asset-item>
+      <a-asset-item 
+        id="modelo3d" 
+        src="modelo.glb"
+        timeout="10000"
+      ></a-asset-item>
     </a-assets>
-
-    <!-- Entidad AR activada por el target) -->
-    <a-entity mindar-image-target="targetIndex: 0">
+    
+    <!-- Entidad AR con animaciones y eventos -->
+    <a-entity 
+      id="ar-target"
+      mindar-image-target="targetIndex: 0"
+    >
+      <!-- Modelo 3D con animaciones -->
       <a-gltf-model
+        id="gatito-modelo"
         src="#modelo3d"
         position="0 0 0"
         rotation="0 0 0"
         scale="0.5 0.5 0.5"
+        animation__rotation="property: rotation; to: 0 360 0; loop: true; dur: 10000; easing: linear"
+        animation__scale="property: scale; from: 0.1 0.1 0.1; to: 0.5 0.5 0.5; dur: 1000; easing: easeOutElastic"
       ></a-gltf-model>
+      
+      <!-- Sombra opcional -->
+      <a-plane
+        position="0 -0.5 0"
+        rotation="-90 0 0"
+        width="2"
+        height="2"
+        color="#000000"
+        opacity="0.3"
+        material="transparent: true"
+      ></a-plane>
     </a-entity>
   </a-scene>
-</body>
-</html>
+
+  <script>
+    // Gestión de eventos y estados
+    const scene = document.querySelector('#ar-scene');
+    const loading = document.getElementById('loading');
+    const instructions = document.getElementById('instructions');
+    const arTarget = document.querySelector('#ar-target');
+    
+    // Eventos de MindAR
+    scene.addEventListener('renderstart', () => {
+      console.log('AR iniciado');
+      loading.classList.add('hidden');
+      instructions.classList.remove('hidden');
+    });
+    
+    // Evento cuando se detecta el target
+    if (arTarget) {
+      arTarget.addEventListener('targetFound', (event) => {
+        console.log('Target encontrado');
+        instructions.classList.add('hidden');
+        
+        // Reproducir sonido si está disponible
+        try {
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJHfH8N2QQAoUXrTp66hVFApGn+DyvmQdBzyR1/LNeSsFJH
